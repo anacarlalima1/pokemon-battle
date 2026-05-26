@@ -3,39 +3,42 @@
 namespace App\Services;
 
 use App\DTOs\PokemonDTO;
+use App\Exceptions\PokeApiUnavailableException;
+use App\Exceptions\PokemonNotFoundException;
+use App\Mappers\PokemonMapper;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
-use InvalidArgumentException;
-use RuntimeException;
 
 class PokemonService
 {
+    public function __construct(
+        private readonly PokemonMapper $pokemonMapper,
+    ) {
+    }
+
     public function findByName(string $name): PokemonDTO
     {
         $normalizedName = $this->normalizeName($name);
+        $url = $this->baseUrl() . "/pokemon/{$normalizedName}";
 
         try {
-            $response = Http::timeout(10)
+            $response = Http::acceptJson()
+                ->timeout(10)
                 ->retry(2, 200)
-                ->get($this->baseUrl() . "/pokemon/{$normalizedName}")
+                ->get($url)
                 ->throw();
+        } catch (ConnectionException) {
+            throw new PokeApiUnavailableException();
         } catch (RequestException $exception) {
             if ($exception->response?->status() === 404) {
-                throw new InvalidArgumentException("O Pokémon '{$name}' não foi encontrado.");
+                throw new PokemonNotFoundException($name);
             }
 
-            throw new RuntimeException('Não foi possível consultar a PokéAPI no momento.');
+            throw new PokeApiUnavailableException();
         }
 
-        $data = $response->json();
-
-        return new PokemonDTO(
-            name: $data['name'],
-            hp: $this->extractHp($data, $name),
-            sprite: $this->extractSprite($data),
-            animatedSprite: $this->extractAnimatedSprite($data),
-            types: $this->extractTypes($data),
-        );
+        return $this->pokemonMapper->mapToDTO($response->json(), $name);
     }
 
     private function baseUrl(): string
@@ -51,40 +54,5 @@ class PokemonService
             ->ascii()
             ->replace(' ', '-')
             ->toString();
-    }
-
-    private function extractHp(array $data, string $name): int
-    {
-        $hpStat = collect($data['stats'] ?? [])
-            ->firstWhere('stat.name', 'hp');
-
-        if (!$hpStat || !isset($hpStat['base_stat'])) {
-            throw new RuntimeException("Não foi possível encontrar o HP do Pokémon '{$name}'.");
-        }
-
-        return (int) $hpStat['base_stat'];
-    }
-
-    private function extractSprite(array $data): ?string
-    {
-        return $data['sprites']['front_default']
-            ?? $data['sprites']['other']['official-artwork']['front_default']
-            ?? null;
-    }
-
-    private function extractAnimatedSprite(array $data): ?string
-    {
-        return $data['sprites']['other']['showdown']['front_default']
-            ?? $data['sprites']['versions']['generation-v']['black-white']['animated']['front_default']
-            ?? $data['sprites']['front_default']
-            ?? null;
-    }
-
-    private function extractTypes(array $data): array
-    {
-        return collect($data['types'] ?? [])
-            ->pluck('type.name')
-            ->values()
-            ->all();
     }
 }
