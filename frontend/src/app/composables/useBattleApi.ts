@@ -1,8 +1,10 @@
 import type { BattlePayload, BattleResponse } from '../types/battle'
 
 interface ApiError {
+  status?: number
   data?: {
     message?: string
+    errors?: Record<string, string[]>
   }
   message?: string
 }
@@ -19,12 +21,29 @@ export function useBattleApi() {
     } catch (error) {
       const apiError = error as ApiError
 
-      const message =
-        apiError.data?.message ||
-        apiError.message ||
-        'Não foi possível realizar a batalha.'
+      if (apiError.data?.errors) {
+        const firstError = Object.values(apiError.data.errors)[0]?.[0]
 
-      throw new Error(message)
+        throw new Error(firstError || 'Verifique os dados informados.')
+      }
+
+      if (apiError.data?.message) {
+        throw new Error(apiError.data.message)
+      }
+
+      if (apiError.status === 503) {
+        throw new Error('A PokéAPI está indisponível no momento. Tente novamente mais tarde.')
+      }
+
+      if (apiError.status === 502) {
+        throw new Error('Recebemos uma resposta inesperada da PokéAPI. Tente outro Pokémon.')
+      }
+
+      if (apiError.status === 404) {
+        throw new Error('Um dos Pokémons informados não foi encontrado.')
+      }
+
+      throw new Error('Não foi possível realizar a batalha. Tente novamente.')
     }
   }
 
