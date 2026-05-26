@@ -5,20 +5,28 @@ import type { Pokemon } from '../types/battle'
 const props = defineProps<{
   pokemon: Pokemon
   isWinner: boolean
+  hpDifference?: number
 }>()
 
 const spriteUrl = computed(() => {
   return props.pokemon.animated_sprite || props.pokemon.sprite
 })
+
+const hpPercentage = computed(() => {
+  const maxHpReference = 160
+  const percentage = (props.pokemon.hp / maxHpReference) * 100
+
+  return Math.min(Math.max(percentage, 5), 100)
+})
 </script>
 
 <template>
   <article class="pokemon-card" :class="{ winner: isWinner }">
-    <span v-if="isWinner" class="winner-badge">
+    <div v-if="isWinner" class="winner-badge">
       WIN
-    </span>
+    </div>
 
-    <div class="sprite-area">
+    <div class="pokemon-screen">
       <img
         v-if="spriteUrl"
         :src="spriteUrl"
@@ -30,10 +38,22 @@ const spriteUrl = computed(() => {
     <div class="pokemon-info">
       <h2>{{ pokemon.name }}</h2>
 
-      <div class="hp-box">
+      <div class="hp-row">
         <span>HP</span>
+
+        <div class="hp-bar">
+          <div
+            class="hp-fill"
+            :style="{ width: `${hpPercentage}%` }"
+          />
+        </div>
+
         <strong>{{ pokemon.hp }}</strong>
       </div>
+
+      <p v-if="isWinner && hpDifference" class="hp-difference">
+        +{{ hpDifference }} HP
+      </p>
 
       <div class="types">
         <span
@@ -51,87 +71,111 @@ const spriteUrl = computed(() => {
 <style scoped>
 .pokemon-card {
   position: relative;
-  width: 260px;
-  padding: 18px;
-  border: 4px solid #2b2b2b;
-  border-radius: 8px;
-  background: #f4f4f4;
-  box-shadow: 6px 6px 0 #2b2b2b;
-  text-align: center;
+  width: 280px;
+  padding: 14px;
+  border: 4px solid #1f2a44;
+  border-radius: 14px;
+  background: #f8f3d4;
+  box-shadow: 8px 8px 0 #1f2a44;
 }
 
 .pokemon-card.winner {
-  background: #fff8d6;
+  background: #fff0a8;
   border-color: #ffcb05;
 }
 
 .winner-badge {
   position: absolute;
+  z-index: 2;
   top: -18px;
   right: -14px;
-  padding: 6px 10px;
-  border: 3px solid #2b2b2b;
-  border-radius: 6px;
+  padding: 6px 12px;
+  border: 3px solid #1f2a44;
+  border-radius: 8px;
   background: #ffcb05;
-  color: #2b2b2b;
+  color: #1f2a44;
   font-weight: 900;
-  box-shadow: 3px 3px 0 #2b2b2b;
+  box-shadow: 4px 4px 0 #1f2a44;
 }
 
-.sprite-area {
-  height: 150px;
+.pokemon-screen {
+  height: 170px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 3px solid #2b2b2b;
-  border-radius: 6px;
+  border: 4px solid #1f2a44;
+  border-radius: 10px;
   background:
-    linear-gradient(45deg, #d7f3ff 25%, transparent 25%),
-    linear-gradient(-45deg, #d7f3ff 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #d7f3ff 75%),
-    linear-gradient(-45deg, transparent 75%, #d7f3ff 75%);
-  background-color: #ffffff;
-  background-size: 22px 22px;
-  background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+    linear-gradient(#ffffffcc, #ffffffcc),
+    repeating-linear-gradient(
+      0deg,
+      #b9ecff 0,
+      #b9ecff 12px,
+      #9eddf5 12px,
+      #9eddf5 24px
+    );
 }
 
 .pokemon-sprite {
-  width: 120px;
-  height: 120px;
+  width: 135px;
+  height: 135px;
   object-fit: contain;
   image-rendering: pixelated;
+  transform: scale(1.15);
 }
 
 .pokemon-info {
-  margin-top: 14px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 3px solid #1f2a44;
+  border-radius: 10px;
+  background: white;
+  text-align: center;
 }
 
 h2 {
-  margin: 0 0 12px;
-  color: #2b2b2b;
-  font-size: 24px;
+  margin: 0 0 10px;
+  color: #1f2a44;
+  font-size: 26px;
   text-transform: capitalize;
 }
 
-.hp-box {
-  display: flex;
-  justify-content: space-between;
+.hp-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  margin: 0 auto;
-  padding: 8px 12px;
-  border: 3px solid #2b2b2b;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #2b2b2b;
-}
-
-.hp-box span {
+  gap: 8px;
+  color: #1f2a44;
   font-weight: 900;
 }
 
-.hp-box strong {
-  color: #e53935;
-  font-size: 22px;
+.hp-bar {
+  height: 12px;
+  border: 2px solid #1f2a44;
+  border-radius: 999px;
+  background: #ddd;
+  overflow: hidden;
+}
+
+.hp-fill {
+  height: 100%;
+  background: #39d353;
+}
+
+.hp-row strong {
+  color: #e3350d;
+}
+
+.hp-difference {
+  display: inline-block;
+  margin: 10px 0 0;
+  padding: 5px 10px;
+  border: 2px solid #1f2a44;
+  border-radius: 999px;
+  background: #ffcb05;
+  color: #1f2a44;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .types {
@@ -143,13 +187,13 @@ h2 {
 }
 
 .type {
-  padding: 5px 10px;
-  border: 2px solid #2b2b2b;
+  padding: 5px 11px;
+  border: 2px solid #1f2a44;
   border-radius: 999px;
-  background: #e9e9e9;
-  color: #2b2b2b;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: capitalize;
+  background: #3b4cca;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
 }
 </style>

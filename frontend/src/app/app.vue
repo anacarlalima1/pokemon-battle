@@ -1,43 +1,44 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import BattleForm from './components/BattleForm.vue'
-import BattleResult from './components/BattleResult.vue'
-import PokemonCard from './components/PokemonCard.vue'
-import type { BattleResponse } from './types/battle'
+import { computed, ref } from "vue";
+import BattleForm from "./components/BattleForm.vue";
+import BattleResult from "./components/BattleResult.vue";
+import PokemonCard from "./components/PokemonCard.vue";
+import type { BattleResponse } from "./types/battle";
 
-const loading = ref(false)
-const errorMessage = ref('')
-const battle = ref<BattleResponse | null>(null)
+const loading = ref(false);
+const errorMessage = ref("");
+const battle = ref<BattleResponse | null>(null);
 
-const { battlePokemons } = useBattleApi()
+const { battlePokemons } = useBattleApi();
 
-const winnerName = computed(() => battle.value?.result.winner)
+const winnerName = computed(() => battle.value?.result.winner);
 
 async function handleBattle(pokemonOne: string, pokemonTwo: string) {
-  errorMessage.value = ''
-  battle.value = null
+  errorMessage.value = "";
+  battle.value = null;
 
-  const firstPokemon = pokemonOne.trim()
-  const secondPokemon = pokemonTwo.trim()
+  const firstPokemon = pokemonOne.trim();
+  const secondPokemon = pokemonTwo.trim();
 
   if (!firstPokemon || !secondPokemon) {
-    errorMessage.value = 'Informe os nomes dos dois Pokémons.'
-    return
+    errorMessage.value = "Informe os nomes dos dois Pokémons.";
+    return;
   }
 
   try {
-    loading.value = true
+    loading.value = true;
 
     battle.value = await battlePokemons({
       pokemon_one: firstPokemon,
       pokemon_two: secondPokemon,
-    })
+    });
   } catch (error) {
-    errorMessage.value = error instanceof Error
-      ? error.message
-      : 'Erro inesperado ao realizar a batalha.'
+    errorMessage.value =
+      error instanceof Error
+        ? error.message
+        : "Erro inesperado ao realizar a batalha.";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 </script>
@@ -54,10 +55,7 @@ async function handleBattle(pokemonOne: string, pokemonTwo: string) {
         </div>
       </header>
 
-      <BattleForm
-        :loading="loading"
-        @submit="handleBattle"
-      />
+      <BattleForm :loading="loading" @submit="handleBattle" />
 
       <p v-if="errorMessage" class="error-message">
         {{ errorMessage }}
@@ -70,9 +68,7 @@ async function handleBattle(pokemonOne: string, pokemonTwo: string) {
         :is-winner="winnerName === battle.pokemon_one.name"
       />
 
-      <div class="vs-box">
-        VS
-      </div>
+      <div class="center-vs">VS</div>
 
       <PokemonCard
         :pokemon="battle.pokemon_two"
@@ -83,6 +79,8 @@ async function handleBattle(pokemonOne: string, pokemonTwo: string) {
     <BattleResult
       v-if="battle"
       :result="battle.result"
+      :pokemon-one="battle.pokemon_one"
+      :pokemon-two="battle.pokemon_two"
     />
   </main>
 </template>
@@ -95,7 +93,10 @@ async function handleBattle(pokemonOne: string, pokemonTwo: string) {
     linear-gradient(#00000022 1px, transparent 1px),
     linear-gradient(90deg, #00000022 1px, transparent 1px),
     linear-gradient(135deg, #e53935 0%, #e53935 48%, #263238 48%, #263238 100%);
-  background-size: 28px 28px, 28px 28px, 100% 100%;
+  background-size:
+    28px 28px,
+    28px 28px,
+    100% 100%;
   font-family: Arial, Helvetica, sans-serif;
 }
 
