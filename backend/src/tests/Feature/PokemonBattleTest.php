@@ -200,6 +200,60 @@ class PokemonBattleTest extends TestCase
             return $request->url() === 'https://pokeapi.co/api/v2/pokemon/charizard';
         });
     }
+    public function test_it_returns_404_when_pokemon_does_not_exist(): void
+    {
+        Http::fake([
+            'https://pokeapi.co/api/v2/pokemon/pikachu' => Http::response(
+                $this->pokemonResponse('pikachu', 35, 'pikachu.png', 'pikachu.gif', ['electric'])
+            ),
+            'https://pokeapi.co/api/v2/pokemon/invalid' => Http::response([], 404),
+        ]);
+
+        $response = $this->postJson('/api/battles', [
+            'pokemon_one' => 'pikachu',
+            'pokemon_two' => 'invalid',
+        ]);
+
+        $response->assertStatus(404)
+            ->assertJsonPath('message', "O Pokémon 'invalid' não foi encontrado.");
+    }
+    public function test_it_returns_503_when_pokeapi_is_unavailable(): void
+    {
+        Http::fake([
+            'https://pokeapi.co/api/v2/pokemon/*' => Http::failedConnection(),
+        ]);
+
+        $response = $this->postJson('/api/battles', [
+            'pokemon_one' => 'pikachu',
+            'pokemon_two' => 'charizard',
+        ]);
+
+        $response->assertStatus(503)
+            ->assertJsonPath('message', 'Não foi possível consultar a PokéAPI no momento. Tente novamente mais tarde.');
+    }
+    public function test_it_returns_502_when_pokeapi_response_has_no_hp(): void
+    {
+        Http::fake([
+            'https://pokeapi.co/api/v2/pokemon/pikachu' => Http::response([
+                'name' => 'pikachu',
+                'stats' => [],
+                'sprites' => [],
+                'types' => [],
+            ]),
+
+            'https://pokeapi.co/api/v2/pokemon/charizard' => Http::response(
+                $this->pokemonResponse('charizard', 78, 'charizard.png', 'charizard.gif', ['fire'])
+            ),
+        ]);
+
+        $response = $this->postJson('/api/battles', [
+            'pokemon_one' => 'pikachu',
+            'pokemon_two' => 'charizard',
+        ]);
+
+        $response->assertStatus(502)
+            ->assertJsonPath('message', "A resposta da PokéAPI para 'pikachu' está em um formato inesperado.");
+    }
 
     private function pokemonResponse(
         string $name,
@@ -241,7 +295,7 @@ class PokemonBattleTest extends TestCase
                 ],
             ],
             'types' => array_map(
-                fn (string $type) => [
+                fn(string $type) => [
                     'type' => [
                         'name' => $type,
                     ],
