@@ -1,0 +1,31 @@
+# Backend
+backend/src/vendor
+backend/src/node_modules
+backend/src/public/build
+backend/src/public/hot
+backend/src/public/storage
+backend/src/storage/*.key
+backend/src/storage/pail
+backend/src/.env
+backend/src/.env.*
+!backend/src/.env.example
+backend/src/.phpunit.cache
+backend/src/.phpunit.result.cache
+
+# Frontend
+frontend/src/node_modules
+frontend/src/.nuxt
+frontend/src/.output
+frontend/src/.nitro
+frontend/src/.cache
+frontend/src/.data
+frontend/src/dist
+frontend/src/.env
+frontend/src/.env.*
+!frontend/src/.env.example
+
+# Geral
+*.log
+.DS_Store
+.idea
+.vscode
