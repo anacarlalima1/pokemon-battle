@@ -2,12 +2,21 @@
 
 namespace App\Exceptions;
 
-use RuntimeException;
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
-class PokeApiUnavailableException extends RuntimeException
+class PokeApiUnavailableException extends Exception
 {
     public function __construct()
     {
-        parent::__construct('Não foi possível consultar a PokéAPI no momento. Tente novamente mais tarde.');
+        parent::__construct('A PokeAPI está indisponível no momento.');
+    }
+
+    public function render(): JsonResponse
+    {
+        return response()->json([
+            'message' => $this->getMessage(),
+        ], Response::HTTP_SERVICE_UNAVAILABLE);
     }
 }

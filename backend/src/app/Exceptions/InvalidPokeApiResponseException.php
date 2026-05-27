@@ -2,12 +2,21 @@
 
 namespace App\Exceptions;
 
-use RuntimeException;
+use Exception;
+use Illuminate\Http\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 
-class InvalidPokeApiResponseException extends RuntimeException
+class InvalidPokeApiResponseException extends Exception
 {
     public function __construct(string $pokemonName)
     {
-        parent::__construct("A resposta da PokéAPI para '{$pokemonName}' está em um formato inesperado.");
+        parent::__construct("Resposta inválida da PokeAPI para o Pokémon {$pokemonName}.");
+    }
+
+    public function render(): JsonResponse
+    {
+        return response()->json([
+            'message' => $this->getMessage(),
+        ], Response::HTTP_BAD_GATEWAY);
     }
 }
