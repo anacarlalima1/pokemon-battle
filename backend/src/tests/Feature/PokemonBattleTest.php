@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Support\Facades\Http;
+use Symfony\Component\HttpFoundation\Response;
 use Tests\TestCase;
 
 class PokemonBattleTest extends TestCase
@@ -44,8 +45,11 @@ class PokemonBattleTest extends TestCase
             ->assertJsonPath('pokemon_one.types.0', 'electric')
             ->assertJsonPath('pokemon_two.name', 'charizard')
             ->assertJsonPath('pokemon_two.hp', 78)
+            ->assertJsonPath('pokemon_two.types.0', 'fire')
+            ->assertJsonPath('pokemon_two.types.1', 'flying')
             ->assertJsonPath('result.type', 'winner')
-            ->assertJsonPath('result.winner', 'charizard');
+            ->assertJsonPath('result.winner', 'pokemon_two')
+            ->assertJsonPath('result.winner_name', 'charizard');
     }
 
     public function test_it_returns_pokemon_one_as_winner_when_it_has_more_hp(): void
@@ -83,7 +87,8 @@ class PokemonBattleTest extends TestCase
             ->assertJsonPath('pokemon_two.name', 'pikachu')
             ->assertJsonPath('pokemon_two.hp', 35)
             ->assertJsonPath('result.type', 'winner')
-            ->assertJsonPath('result.winner', 'snorlax');
+            ->assertJsonPath('result.winner', 'pokemon_one')
+            ->assertJsonPath('result.winner_name', 'snorlax');
     }
 
     public function test_it_returns_draw_when_both_pokemons_have_same_hp(): void
@@ -119,39 +124,15 @@ class PokemonBattleTest extends TestCase
             ->assertJsonPath('pokemon_one.hp', 48)
             ->assertJsonPath('pokemon_two.hp', 48)
             ->assertJsonPath('result.type', 'draw')
-            ->assertJsonPath('result.winner', null);
-    }
-
-    public function test_it_returns_error_when_a_pokemon_does_not_exist(): void
-    {
-        Http::fake([
-            'https://pokeapi.co/api/v2/pokemon/pikachu' => Http::response(
-                $this->pokemonResponse(
-                    name: 'pikachu',
-                    hp: 35,
-                    sprite: 'https://example.com/pikachu.png',
-                    animatedSprite: 'https://example.com/pikachu.gif',
-                    types: ['electric']
-                )
-            ),
-
-            'https://pokeapi.co/api/v2/pokemon/naoexiste' => Http::response([], 404),
-        ]);
-
-        $response = $this->postJson('/api/battles', [
-            'pokemon_one' => 'pikachu',
-            'pokemon_two' => 'naoexiste',
-        ]);
-
-        $response->assertStatus(404)
-            ->assertJsonPath('message', "O Pokémon 'naoexiste' não foi encontrado.");
+            ->assertJsonPath('result.winner', null)
+            ->assertJsonPath('result.winner_name', null);
     }
 
     public function test_it_validates_required_fields(): void
     {
         $response = $this->postJson('/api/battles', []);
 
-        $response->assertStatus(422)
+        $response->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)
             ->assertJsonValidationErrors([
                 'pokemon_one',
                 'pokemon_two',
@@ -190,23 +171,28 @@ class PokemonBattleTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('pokemon_one.name', 'pikachu')
             ->assertJsonPath('pokemon_two.name', 'charizard')
-            ->assertJsonPath('result.winner', 'charizard');
+            ->assertJsonPath('result.winner', 'pokemon_two')
+            ->assertJsonPath('result.winner_name', 'charizard');
 
-        Http::assertSent(function ($request) {
-            return $request->url() === 'https://pokeapi.co/api/v2/pokemon/pikachu';
-        });
+        Http::assertSent(fn ($request) => $request->url() === 'https://pokeapi.co/api/v2/pokemon/pikachu');
 
-        Http::assertSent(function ($request) {
-            return $request->url() === 'https://pokeapi.co/api/v2/pokemon/charizard';
-        });
+        Http::assertSent(fn ($request) => $request->url() === 'https://pokeapi.co/api/v2/pokemon/charizard');
     }
+
     public function test_it_returns_404_when_pokemon_does_not_exist(): void
     {
         Http::fake([
             'https://pokeapi.co/api/v2/pokemon/pikachu' => Http::response(
-                $this->pokemonResponse('pikachu', 35, 'pikachu.png', 'pikachu.gif', ['electric'])
+                $this->pokemonResponse(
+                    name: 'pikachu',
+                    hp: 35,
+                    sprite: 'pikachu.png',
+                    animatedSprite: 'pikachu.gif',
+                    types: ['electric']
+                )
             ),
-            'https://pokeapi.co/api/v2/pokemon/invalid' => Http::response([], 404),
+
+            'https://pokeapi.co/api/v2/pokemon/invalid' => Http::response([], Response::HTTP_NOT_FOUND),
         ]);
 
         $response = $this->postJson('/api/battles', [
@@ -214,9 +200,10 @@ class PokemonBattleTest extends TestCase
             'pokemon_two' => 'invalid',
         ]);
 
-        $response->assertStatus(404)
-            ->assertJsonPath('message', "O Pokémon 'invalid' não foi encontrado.");
+        $response->assertStatus(Response::HTTP_NOT_FOUND)
+            ->assertJsonPath('message', "Pokémon invalid não encontrado.");
     }
+
     public function test_it_returns_503_when_pokeapi_is_unavailable(): void
     {
         Http::fake([
@@ -228,9 +215,10 @@ class PokemonBattleTest extends TestCase
             'pokemon_two' => 'charizard',
         ]);
 
-        $response->assertStatus(503)
-            ->assertJsonPath('message', 'Não foi possível consultar a PokéAPI no momento. Tente novamente mais tarde.');
+        $response->assertStatus(Response::HTTP_SERVICE_UNAVAILABLE)
+            ->assertJsonPath('message', 'A PokeAPI está indisponível no momento.');
     }
+
     public function test_it_returns_502_when_pokeapi_response_has_no_hp(): void
     {
         Http::fake([
@@ -242,7 +230,13 @@ class PokemonBattleTest extends TestCase
             ]),
 
             'https://pokeapi.co/api/v2/pokemon/charizard' => Http::response(
-                $this->pokemonResponse('charizard', 78, 'charizard.png', 'charizard.gif', ['fire'])
+                $this->pokemonResponse(
+                    name: 'charizard',
+                    hp: 78,
+                    sprite: 'charizard.png',
+                    animatedSprite: 'charizard.gif',
+                    types: ['fire']
+                )
             ),
         ]);
 
@@ -251,8 +245,8 @@ class PokemonBattleTest extends TestCase
             'pokemon_two' => 'charizard',
         ]);
 
-        $response->assertStatus(502)
-            ->assertJsonPath('message', "A resposta da PokéAPI para 'pikachu' está em um formato inesperado.");
+        $response->assertStatus(Response::HTTP_BAD_GATEWAY)
+            ->assertJsonPath('message', "Resposta inválida da PokeAPI para o Pokémon pikachu.");
     }
 
     private function pokemonResponse(
@@ -295,7 +289,7 @@ class PokemonBattleTest extends TestCase
                 ],
             ],
             'types' => array_map(
-                fn(string $type) => [
+                fn (string $type) => [
                     'type' => [
                         'name' => $type,
                     ],
