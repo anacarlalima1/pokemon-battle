@@ -11,7 +11,7 @@ const battle = ref<BattleResponse | null>(null);
 
 const { battlePokemons } = useBattleApi();
 
-const winnerName = computed(() => battle.value?.result.winner);
+const winner = computed(() => battle.value?.result.winner ?? null);
 
 async function handleBattle(pokemonOne: string, pokemonTwo: string) {
   errorMessage.value = "";
@@ -65,14 +65,14 @@ async function handleBattle(pokemonOne: string, pokemonTwo: string) {
     <section v-if="battle" class="arena">
       <PokemonCard
         :pokemon="battle.pokemon_one"
-        :is-winner="winnerName === battle.pokemon_one.name"
+        :is-winner="winner === 'pokemon_one'"
       />
 
-      <div class="center-vs">VS</div>
+      <div class="vs-box">VS</div>
 
       <PokemonCard
         :pokemon="battle.pokemon_two"
-        :is-winner="winnerName === battle.pokemon_two.name"
+        :is-winner="winner === 'pokemon_two'"
       />
     </section>
 

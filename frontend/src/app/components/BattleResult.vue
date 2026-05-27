@@ -17,7 +17,7 @@ const winnerPokemon = computed(() => {
     return null
   }
 
-  return props.result.winner === props.pokemonOne.name
+  return props.result.winner === 'pokemon_one'
     ? props.pokemonOne
     : props.pokemonTwo
 })
@@ -27,9 +27,13 @@ const loserPokemon = computed(() => {
     return null
   }
 
-  return props.result.winner === props.pokemonOne.name
+  return props.result.winner === 'pokemon_one'
     ? props.pokemonTwo
     : props.pokemonOne
+})
+
+const winnerName = computed(() => {
+  return props.result.winner_name ?? winnerPokemon.value?.name ?? ''
 })
 </script>
 
@@ -41,7 +45,7 @@ const loserPokemon = computed(() => {
       </span>
 
       <strong>
-        {{ result.type === 'draw' ? 'Empate!' : `${result.winner} venceu!` }}
+        {{ result.type === 'draw' ? 'Empate!' : `${winnerName} venceu!` }}
       </strong>
     </div>
 
