@@ -10,7 +10,7 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
-if [ ! -d "node_modules" ]; then
+if [ ! -d "node_modules" ] || [ -z "$(ls -A node_modules 2>/dev/null)" ]; then
     echo "Instalando dependências do NPM..."
     npm install
 fi
