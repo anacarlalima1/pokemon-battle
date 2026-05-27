@@ -11,6 +11,14 @@ class BattleRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'pokemon_one' => $this->normalizePokemonName($this->input('pokemon_one')),
+            'pokemon_two' => $this->normalizePokemonName($this->input('pokemon_two')),
+        ]);
+    }
+
     public function rules(): array
     {
         return [
@@ -27,5 +35,29 @@ class BattleRequest extends FormRequest
             'pokemon_one.string' => 'O primeiro Pokémon deve ser um texto.',
             'pokemon_two.string' => 'O segundo Pokémon deve ser um texto.',
         ];
+    }
+
+    public function pokemonOne(): string
+    {
+        return $this->validated('pokemon_one');
+    }
+
+    public function pokemonTwo(): string
+    {
+        return $this->validated('pokemon_two');
+    }
+
+    private function normalizePokemonName(?string $name): ?string
+    {
+        if ($name === null) {
+            return null;
+        }
+
+        return str($name)
+            ->trim()
+            ->lower()
+            ->ascii()
+            ->replace(' ', '-')
+            ->toString();
     }
 }
