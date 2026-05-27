@@ -2,44 +2,53 @@
 
 namespace App\Services;
 
+use App\DTOs\BattleDTO;
+use App\DTOs\BattleResultDTO;
 use App\DTOs\PokemonDTO;
 
 class BattleService
 {
     public function __construct(
         private readonly PokemonService $pokemonService,
-    ) {
-    }
+    ) {}
 
-    public function battle(string $pokemonOneName, string $pokemonTwoName): array
+    public function execute(string $pokemonOneName, string $pokemonTwoName): BattleDTO
     {
         $pokemonOne = $this->pokemonService->findByName($pokemonOneName);
         $pokemonTwo = $this->pokemonService->findByName($pokemonTwoName);
 
-        return [
-            'pokemon_one' => $pokemonOne->toArray(),
-            'pokemon_two' => $pokemonTwo->toArray(),
-            'result' => $this->resolveBattleResult($pokemonOne, $pokemonTwo),
-        ];
+        return new BattleDTO(
+            pokemonOne: $pokemonOne,
+            pokemonTwo: $pokemonTwo,
+            result: $this->resolveBattleResult($pokemonOne, $pokemonTwo),
+        );
     }
 
-    private function resolveBattleResult(PokemonDTO $pokemonOne, PokemonDTO $pokemonTwo): array
+    private function resolveBattleResult(PokemonDTO $pokemonOne, PokemonDTO $pokemonTwo): BattleResultDTO
     {
         if ($pokemonOne->hp === $pokemonTwo->hp) {
-            return [
-                'type' => 'draw',
-                'winner' => null,
-                'message' => "A batalha terminou empatada. Ambos possuem {$pokemonOne->hp} HP.",
-            ];
+            return new BattleResultDTO(
+                type: 'draw',
+                winner: null,
+                winnerName: null,
+                message: "A batalha terminou empatada. Ambos possuem {$pokemonOne->hp} HP.",
+            );
         }
 
-        $winner = $pokemonOne->hp > $pokemonTwo->hp ? $pokemonOne : $pokemonTwo;
-        $loser = $pokemonOne->hp > $pokemonTwo->hp ? $pokemonTwo : $pokemonOne;
+        if ($pokemonOne->hp > $pokemonTwo->hp) {
+            return new BattleResultDTO(
+                type: 'winner',
+                winner: 'pokemon_one',
+                winnerName: $pokemonOne->name,
+                message: "{$pokemonOne->name} venceu com {$pokemonOne->hp} HP contra {$pokemonTwo->hp} HP.",
+            );
+        }
 
-        return [
-            'type' => 'winner',
-            'winner' => $winner->name,
-            'message' => "{$winner->name} venceu com {$winner->hp} HP contra {$loser->hp} HP.",
-        ];
+        return new BattleResultDTO(
+            type: 'winner',
+            winner: 'pokemon_two',
+            winnerName: $pokemonTwo->name,
+            message: "{$pokemonTwo->name} venceu com {$pokemonTwo->hp} HP contra {$pokemonOne->hp} HP.",
+        );
     }
 }
