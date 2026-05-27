@@ -13,57 +13,55 @@ class PokemonMapper
             throw new InvalidPokeApiResponseException($searchedName);
         }
 
+        $name = data_get($data, 'name');
+        $hp = $this->extractHp($data, $searchedName);
+
+        if (!is_string($name) || blank($name)) {
+            throw new InvalidPokeApiResponseException($searchedName);
+        }
+
         return new PokemonDTO(
-            name: $this->extractName($data, $searchedName),
-            hp: $this->extractHp($data, $searchedName),
-            sprite: $this->extractSprite($data),
-            animatedSprite: $this->extractAnimatedSprite($data),
+            name: $name,
+            hp: $hp,
+            sprite: $this->firstValidString([
+                data_get($data, 'sprites.front_default'),
+                data_get($data, 'sprites.other.official-artwork.front_default'),
+            ]),
+            animatedSprite: $this->firstValidString([
+                data_get($data, 'sprites.other.showdown.front_default'),
+                data_get($data, 'sprites.versions.generation-v.black-white.animated.front_default'),
+                data_get($data, 'sprites.front_default'),
+            ]),
             types: $this->extractTypes($data),
         );
     }
 
-    private function extractName(array $data, string $searchedName): string
+    private function extractHp(array $data, string $searchedName): int
     {
-        if (empty($data['name']) || !is_string($data['name'])) {
+        $hp = collect(data_get($data, 'stats', []))
+            ->firstWhere('stat.name', 'hp');
+
+        $baseStat = data_get($hp, 'base_stat');
+
+        if (!is_numeric($baseStat)) {
             throw new InvalidPokeApiResponseException($searchedName);
         }
 
-        return $data['name'];
-    }
-
-    private function extractHp(array $data, string $pokemonName): int
-    {
-        $hpStat = collect($data['stats'] ?? [])
-            ->firstWhere('stat.name', 'hp');
-
-        if (!$hpStat || !isset($hpStat['base_stat']) || !is_numeric($hpStat['base_stat'])) {
-            throw new InvalidPokeApiResponseException($pokemonName);
-        }
-
-        return (int) $hpStat['base_stat'];
-    }
-
-    private function extractSprite(array $data): ?string
-    {
-        return $data['sprites']['front_default']
-            ?? $data['sprites']['other']['official-artwork']['front_default']
-            ?? null;
-    }
-
-    private function extractAnimatedSprite(array $data): ?string
-    {
-        return $data['sprites']['other']['showdown']['front_default']
-            ?? $data['sprites']['versions']['generation-v']['black-white']['animated']['front_default']
-            ?? $data['sprites']['front_default']
-            ?? null;
+        return (int) $baseStat;
     }
 
     private function extractTypes(array $data): array
     {
-        return collect($data['types'] ?? [])
+        return collect(data_get($data, 'types', []))
             ->pluck('type.name')
-            ->filter()
+            ->filter(fn ($type) => is_string($type) && filled($type))
             ->values()
             ->all();
+    }
+
+    private function firstValidString(array $values): ?string
+    {
+        return collect($values)
+            ->first(fn ($value) => is_string($value) && filled($value));
     }
 }
